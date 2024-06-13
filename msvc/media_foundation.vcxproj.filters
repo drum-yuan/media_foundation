@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{9493797f-7d03-4d5e-b310-b2cda12e9c7b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="encoder">
+      <UniqueIdentifier>{e94615c2-1787-48a7-9157-890125af3e4e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\encoder\mf_encoder.h">
+      <Filter>include</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\encoder\src\mf_encoder.cpp">
+      <Filter>encoder</Filter>
+    </ClCompile>
+    <ClCompile Include="..\deps\dx11convert\dx11convert.cpp">
+      <Filter>encoder</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

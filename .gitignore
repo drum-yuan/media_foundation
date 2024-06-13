@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+# Folder
+msvc/media_foundation
+msvc/x64
