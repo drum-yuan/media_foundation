@@ -379,16 +379,33 @@ private:
 
         if (m_pDX11ShaderNV12)
         {
+            ID3D11Texture2D* nv12_texture = nullptr;
             ID3D11Texture2D* output_texture = nullptr;
-            m_pDX11ShaderNV12->process_shader_nv12(input_texture, &output_texture);
-            HRESULT hr1 = MFCreateDXGISurfaceBuffer(__uuidof(ID3D11Texture2D), output_texture, 0, FALSE, &input_buffer);
+            m_pDX11ShaderNV12->process_shader_nv12(input_texture, &nv12_texture);
+            D3D11_TEXTURE2D_DESC desc = {};
+            nv12_texture->GetDesc(&desc);
+            desc.Usage = D3D11_USAGE_STAGING;
+            desc.BindFlags = 0;
+            desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+            desc.MiscFlags = 0;
+            HRESULT hr1 = m_pD3DDevice->CreateTexture2D(&desc, nullptr, &output_texture);
             if (FAILED(hr1))
             {
-                return nullptr;
-            }
+				return nullptr;
+			}
+            m_pD3DDeviceCtx->CopyResource(output_texture, nv12_texture);
+            nv12_texture->Release();
             MFCreateSample(&yuv_sample);
-            yuv_sample->AddBuffer(input_buffer);
+            MFCreateMemoryBuffer(desc.Width * desc.Height, &input_buffer);
+            D3D11_MAPPED_SUBRESOURCE mapped_resource;
+            m_pD3DDeviceCtx->Map(output_texture, 0, D3D11_MAP_READ, 0, &mapped_resource);
+            uint8_t* data = nullptr;
+            input_buffer->Lock(&data, nullptr, nullptr);
+            memcpy(data, mapped_resource.pData, desc.Width * desc.Height);
+            input_buffer->Unlock();
+            m_pD3DDeviceCtx->Unmap(output_texture, 0);
             output_texture->Release();
+            yuv_sample->AddBuffer(input_buffer);
         }
         else
         {
