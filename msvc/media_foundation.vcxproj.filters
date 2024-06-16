@@ -7,9 +7,15 @@
     <Filter Include="encoder">
       <UniqueIdentifier>{e94615c2-1787-48a7-9157-890125af3e4e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="capture">
+      <UniqueIdentifier>{948ef946-55b6-4445-b02e-a88bccdc5520}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\encoder\mf_encoder.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\capture\camera\mf_capture_camera.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
@@ -19,6 +25,9 @@
     </ClCompile>
     <ClCompile Include="..\deps\dx11convert\dx11convert.cpp">
       <Filter>encoder</Filter>
+    </ClCompile>
+    <ClCompile Include="..\capture\camera\src\mf_capture_camera.cpp">
+      <Filter>capture</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
