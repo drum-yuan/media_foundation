@@ -58,8 +58,8 @@ public:
 	bool start(const std::string& camera_id, int& width, int& height, CAMERA_COLOR_FORMAT& format);
 	void stop(const std::string& camera_id);
     void get_resolution_list(const std::string& camera_id, std::vector<std::pair<int, int>>& resolution_list);
-	void set_property(const std::string& camera_id, CAMERA_PROPETIES prop, int value);
-	int get_property(const std::string& camera_id, CAMERA_PROPETIES prop);
+    void set_property(const std::string& camera_id, CAMERA_PROPETIES prop, float value, bool use_auto);
+	float get_property(const std::string& camera_id, CAMERA_PROPETIES prop);
 
     bool capture(const std::string& camera_id, OutputCameraData& output_data);
 

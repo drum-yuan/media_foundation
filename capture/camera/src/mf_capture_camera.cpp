@@ -2,6 +2,7 @@
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>
+#include <strmif.h>
 #include <codecvt>
 #include <map>
 
@@ -195,8 +196,8 @@ public:
 		{
 			return;
 		}
-		auto it1 = m_mapSourceReader.find(i);
-		if (it1 == m_mapSourceReader.end())
+		auto it = m_mapSourceReader.find(i);
+		if (it == m_mapSourceReader.end())
 		{
 			return;
 		}
@@ -205,7 +206,7 @@ public:
 		while (hr == S_OK)
 		{
 			IMFMediaType* native_type = NULL;
-			hr = it1->second->GetNativeMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, index, &native_type);
+			hr = it->second->GetNativeMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, index, &native_type);
 			if (SUCCEEDED(hr))
 			{
 				UINT32 frame_width = 0;
@@ -220,14 +221,114 @@ public:
 		}
 	}
 
-	void set_property(const std::string& camera_id, CAMERA_PROPETIES prop, int value)
+	void set_property(const std::string& camera_id, CAMERA_PROPETIES prop, float value, bool use_auto)
 	{
-
+		int i = find_camera_index(camera_id);
+		if (i == -1)
+		{
+			return;
+		}
+		auto it = m_mapMediaSource.find(i);
+		if (it == m_mapMediaSource.end())
+		{
+			return;
+		}
+		int mf_prop = camera_prop_to_mf_prop(prop);
+		HRESULT hr = S_OK;
+		if (mf_prop < CAMERA_PAN)
+		{
+			IAMVideoProcAmp* proc_amp = NULL;
+			hr = it->second->QueryInterface(IID_PPV_ARGS(&proc_amp));
+			if (SUCCEEDED(hr))
+			{
+				long min, max, step, def, caps;
+				hr = proc_amp->GetRange(mf_prop, &min, &max, &step, &def, &caps);
+				if (SUCCEEDED(hr))
+				{
+					long val = (long)floor(min + (max - min) * value);
+					if (use_auto)
+						val = def;
+					hr = proc_amp->Set(mf_prop, val, use_auto ? VideoProcAmp_Flags_Auto : VideoProcAmp_Flags_Manual);
+				}
+				proc_amp->Release();
+			}
+		}
+		else
+		{
+			IAMCameraControl* camera_control = NULL;
+			hr = it->second->QueryInterface(IID_PPV_ARGS(&camera_control));
+			if (SUCCEEDED(hr))
+			{
+				long min, max, step, def, caps;
+				hr = camera_control->GetRange(mf_prop, &min, &max, &step, &def, &caps);
+				if (SUCCEEDED(hr))
+				{
+					long val = (long)floor(min + (max - min) * value);
+					if (use_auto)
+						val = def;
+					hr = camera_control->Set(mf_prop, val, use_auto ? VideoProcAmp_Flags_Auto : VideoProcAmp_Flags_Manual);
+				}
+				camera_control->Release();
+			}
+		}
 	}
 
-	int get_property(const std::string& camera_id, CAMERA_PROPETIES prop)
+	float get_property(const std::string& camera_id, CAMERA_PROPETIES prop)
 	{
-		return 0;
+		int i = find_camera_index(camera_id);
+		if (i == -1)
+		{
+			return 0.0f;
+		}
+		auto it = m_mapMediaSource.find(i);
+		if (it == m_mapMediaSource.end())
+		{
+			return 0.0f;
+		}
+		int mf_prop = camera_prop_to_mf_prop(prop);
+		HRESULT hr = S_OK;
+		float value = 0.0f;
+		if (mf_prop < CAMERA_PAN)
+		{
+			IAMVideoProcAmp* proc_amp = NULL;
+			hr = it->second->QueryInterface(IID_PPV_ARGS(&proc_amp));
+			if (SUCCEEDED(hr))
+			{
+				long min, max, step, def, caps;
+				hr = proc_amp->GetRange(mf_prop, &min, &max, &step, &def, &caps);
+				if (SUCCEEDED(hr))
+				{
+					long v = 0, f = 0;
+					hr = proc_amp->Get(mf_prop, &v, &f);
+					if (SUCCEEDED(hr))
+					{
+						value = (v - min) / (float)(max - min);
+					}
+				}
+				proc_amp->Release();
+			}
+		}
+		else
+		{
+			IAMCameraControl* camera_control = NULL;
+			hr = it->second->QueryInterface(IID_PPV_ARGS(&camera_control));
+			if (SUCCEEDED(hr))
+			{
+				long min, max, step, def, caps;
+				hr = camera_control->GetRange(mf_prop, &min, &max, &step, &def, &caps);
+				if (SUCCEEDED(hr))
+				{
+					long v = 0, f = 0;
+					hr = camera_control->Get(mf_prop, &v, &f);
+					if (SUCCEEDED(hr))
+					{
+						value = (v - min) / (float)(max - min);
+					}
+				}
+				camera_control->Release();
+			}
+		}
+		return value;
 	}
 
 	bool capture(const std::string& camera_id, OutputCameraData& output_data)
@@ -342,6 +443,49 @@ private:
 		return -1;
 	}
 
+	int camera_prop_to_mf_prop(CAMERA_PROPETIES prop)
+	{
+		switch (prop)
+		{
+		case CAMERA_BRIGHTNESS:
+			return VideoProcAmp_Brightness;
+		case CAMERA_CONTRAST:
+			return VideoProcAmp_Contrast;
+		case CAMERA_HUE:
+			return VideoProcAmp_Hue;
+		case CAMERA_SATURATION:
+			return VideoProcAmp_Saturation;
+		case CAMERA_SHARPNESS:
+			return VideoProcAmp_Sharpness;
+		case CAMERA_GAMMA:
+			return VideoProcAmp_Gamma;
+		case CAMERA_COLORENABLE:
+			return VideoProcAmp_ColorEnable;
+		case CAMERA_WHITEBALANCE:
+			return VideoProcAmp_WhiteBalance;
+		case CAMERA_BACKLIGHTCOMPENSATION:
+			return VideoProcAmp_BacklightCompensation;
+		case CAMERA_GAIN:
+			return VideoProcAmp_Gain;
+		case CAMERA_PAN:
+			return CameraControl_Pan;
+		case CAMERA_TILT:
+			return CameraControl_Tilt;
+		case CAMERA_ROLL:
+			return CameraControl_Roll;
+		case CAMERA_ZOOM:
+			return CameraControl_Zoom;
+		case CAMERA_EXPOSURE:
+			return CameraControl_Exposure;
+		case CAMERA_IRIS:
+			return CameraControl_Iris;
+		case CAMERA_FOCUS:
+			return CameraControl_Focus;
+		default:
+			return VideoProcAmp_Brightness;
+		}
+	}
+
 	IMFAttributes* m_pAttributes{ nullptr };
 	IMFActivate** m_pMFActivates{ nullptr };
 	UINT32 m_iCameraCount{ 0 };
@@ -386,12 +530,12 @@ void MFCameraCapture::get_resolution_list(const std::string& camera_id, std::vec
 	impl_->get_resolution_list(camera_id, resolution_list);
 }
 
-void MFCameraCapture::set_property(const std::string& camera_id, CAMERA_PROPETIES prop, int value)
+void MFCameraCapture::set_property(const std::string& camera_id, CAMERA_PROPETIES prop, float value, bool use_auto)
 {
-	impl_->set_property(camera_id, prop, value);
+	impl_->set_property(camera_id, prop, value, use_auto);
 }
 
-int MFCameraCapture::get_property(const std::string& camera_id, CAMERA_PROPETIES prop)
+float MFCameraCapture::get_property(const std::string& camera_id, CAMERA_PROPETIES prop)
 {
 	return impl_->get_property(camera_id, prop);
 }
