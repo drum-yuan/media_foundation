@@ -1,5 +1,5 @@
-#ifndef MF_CAMERA_CAMERA_H
-#define MF_CAMERA_CAMERA_H
+#ifndef MF_CAPTURE_CAMERA_H
+#define MF_CAPTURE_CAMERA_H
 
 #include <string>
 #include <vector>
@@ -41,10 +41,10 @@ struct OutputCameraData
 {
 	int width;
 	int height;
+    int stride;
     CAMERA_COLOR_FORMAT format;
 	uint8_t* data;
 	unsigned long size;
-
 };
 
 class __declspec(dllexport) MFCameraCapture final
@@ -54,7 +54,7 @@ public:
 	~MFCameraCapture();
 
     int get_camera_count();
-    void get_camera_id_list(std::vector<std::string>& id_list);
+    void get_camera_list(std::vector<std::string>& id_list, std::vector<std::string>& name_list);
 	bool start(const std::string& camera_id, int& width, int& height, CAMERA_COLOR_FORMAT& format);
 	void stop(const std::string& camera_id);
     void get_resolution_list(const std::string& camera_id, std::vector<std::pair<int, int>>& resolution_list);

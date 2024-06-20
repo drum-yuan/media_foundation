@@ -54,7 +54,7 @@ public:
 		return m_iCameraCount;
 	}
 
-	void get_camera_id_list(std::vector<std::string>& id_list)
+	void get_camera_list(std::vector<std::string>& id_list, std::vector<std::string>& name_list)
 	{
 		if (m_pMFActivates == nullptr)
 		{
@@ -64,9 +64,13 @@ public:
 		{
 			WCHAR* guid = 0;
 			UINT32 guid_len = 255;
-			m_pMFActivates[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &guid, &guid_len);
+			m_pMFActivates[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, &guid, &guid_len);
 			std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> convert;
 			id_list.push_back(convert.to_bytes(guid));
+			WCHAR* name = 0;
+			UINT32 name_len = 255;
+			m_pMFActivates[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &name, &name_len);
+			name_list.push_back(convert.to_bytes(name));
 		}
 	}
 
@@ -360,6 +364,22 @@ public:
 		{
 			return false;
 		}
+
+		auto it2 = m_mapMediaType.find(i);
+		if (it2 != m_mapMediaType.end())
+		{
+			UINT32 frame_width = 0;
+			UINT32 frame_height = 0;
+			MFGetAttributeSize(it2->second, MF_MT_FRAME_SIZE, &frame_width, &frame_height);
+			output_data.width = frame_width;
+			output_data.height = frame_height;
+			GUID subtype;
+			it2->second->GetGUID(MF_MT_SUBTYPE, &subtype);
+			output_data.format = guid_to_camera_format(subtype);
+			LONG stride = 0;
+			MFGetStrideForBitmapInfoHeader(subtype.Data1, frame_width, &stride);
+			output_data.stride = stride;
+		}
 		IMFMediaBuffer* buffer = NULL;
 		hr = sample->ConvertToContiguousBuffer(&buffer);
 		if (FAILED(hr))
@@ -374,22 +394,21 @@ public:
 		}
 		uint8_t* data = nullptr;
 		buffer->Lock(&data, nullptr, nullptr);
-		memcpy(output_data.data, data, output_data.size);
+		if (output_data.stride < 0)
+		{
+			int stride = -output_data.stride;
+			for (int i = output_data.height - 1; i >= 0; i--)
+			{
+				memcpy(output_data.data + (output_data.height - 1 - i) * stride, data + i * stride, stride);
+			}
+		}
+		else
+		{
+			memcpy(output_data.data, data, output_data.size);
+		}
 		buffer->Unlock();
 		buffer->Release();
 		sample->Release();
-		auto it2 = m_mapMediaType.find(i);
-		if (it2 != m_mapMediaType.end())
-		{
-			UINT32 frame_width = 0;
-			UINT32 frame_height = 0;
-			MFGetAttributeSize(it2->second, MF_MT_FRAME_SIZE, &frame_width, &frame_height);
-			output_data.width = frame_width;
-			output_data.height = frame_height;
-			GUID subtype;
-			it2->second->GetGUID(MF_MT_SUBTYPE, &subtype);
-			output_data.format = guid_to_camera_format(subtype);
-		}
 		return true;
 	}
 
@@ -433,7 +452,7 @@ private:
 		{
 			WCHAR* guid = 0;
 			UINT32 guid_len = 255;
-			m_pMFActivates[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &guid, &guid_len);
+			m_pMFActivates[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, &guid, &guid_len);
 			std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> convert;
 			if (camera_id == convert.to_bytes(guid))
 			{
@@ -510,9 +529,9 @@ int MFCameraCapture::get_camera_count()
 	return impl_->get_camera_count();
 }
 
-void MFCameraCapture::get_camera_id_list(std::vector<std::string>& id_list)
+void MFCameraCapture::get_camera_list(std::vector<std::string>& id_list, std::vector<std::string>& name_list)
 {
-	return impl_->get_camera_id_list(id_list);
+	return impl_->get_camera_list(id_list, name_list);
 }
 
 bool MFCameraCapture::start(const std::string& camera_id, int& width, int& height, CAMERA_COLOR_FORMAT& format)
