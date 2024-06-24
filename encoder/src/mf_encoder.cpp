@@ -214,6 +214,12 @@ public:
         }
 
         IMFSample* yuv_sample = nullptr;
+        defer[&]{
+            if (yuv_sample)
+            {
+                yuv_sample->Release();
+            }
+        };
         if (input_data.texture)
         {
             ID3D11Texture2D* cropped_texture = nullptr;
@@ -246,13 +252,6 @@ public:
                 cropped_texture->Release();
             }
         }
-
-        defer[&]{
-            if (yuv_sample)
-            {
-                yuv_sample->Release();
-            }
-        };
         if (yuv_sample)
         {
             int64_t frame_duration = (int64_t)(m_iTimeBase / fps);
@@ -395,6 +394,7 @@ private:
 			}
             m_pD3DDeviceCtx->CopyResource(output_texture, nv12_texture);
             nv12_texture->Release();
+            m_pDX11ShaderNV12->release_input_texture();
             MFCreateSample(&yuv_sample);
             MFCreateMemoryBuffer(desc.Width * desc.Height, &input_buffer);
             D3D11_MAPPED_SUBRESOURCE mapped_resource;

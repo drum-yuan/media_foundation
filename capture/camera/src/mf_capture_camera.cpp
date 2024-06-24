@@ -51,6 +51,8 @@ public:
 
 	int get_camera_count()
 	{
+		IMFActivate** mf_activates = nullptr;
+		MFEnumDeviceSources(m_pAttributes, &mf_activates, &m_iCameraCount);
 		return m_iCameraCount;
 	}
 

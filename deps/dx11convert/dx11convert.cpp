@@ -186,6 +186,14 @@ HRESULT DX11ShaderNV12::process_shader_nv12(ID3D11Texture2D* input_texture, ID3D
     return S_OK;
 }
 
+void DX11ShaderNV12::release_input_texture()
+{
+    if (m_pInputRSV)
+	{
+		m_pInputRSV->Release();
+	}
+}
+
 void DX11ShaderNV12::InitViewPort(const UINT width, const UINT height)
 {
     D3D11_VIEWPORT vp;

@@ -13,6 +13,7 @@ class DX11ShaderNV12
     void prepare_resources(int width, int height);
     void release_resources();
     HRESULT process_shader_nv12(ID3D11Texture2D* input_texture, ID3D11Texture2D** output_texture);
+    void release_input_texture();
 
   private:
     HRESULT InitShiftWidthTexture(const UINT width);
