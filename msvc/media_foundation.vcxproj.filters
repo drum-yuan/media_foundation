@@ -18,6 +18,12 @@
     <ClInclude Include="..\capture\camera\mf_capture_camera.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\capture\monitor\mf_capture_monitor.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\capture\audio\mf_capture_audio.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\encoder\src\mf_encoder.cpp">
@@ -27,6 +33,12 @@
       <Filter>encoder</Filter>
     </ClCompile>
     <ClCompile Include="..\capture\camera\src\mf_capture_camera.cpp">
+      <Filter>capture</Filter>
+    </ClCompile>
+    <ClCompile Include="..\capture\monitor\src\mf_capture_monitor.cpp">
+      <Filter>capture</Filter>
+    </ClCompile>
+    <ClCompile Include="..\capture\audio\src\mf_capture_audio.cpp">
       <Filter>capture</Filter>
     </ClCompile>
   </ItemGroup>
