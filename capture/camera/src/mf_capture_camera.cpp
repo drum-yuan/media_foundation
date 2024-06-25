@@ -37,7 +37,7 @@ public:
 			m_pAttributes->Release();
 			m_pAttributes = nullptr;
 		}
-		if (m_pMFActivates != nullptr)
+		if (m_pMFActivates)
 		{
 			for (UINT32 i = 0; i < m_iCameraCount; i++)
 			{
@@ -51,29 +51,42 @@ public:
 
 	int get_camera_count()
 	{
-		IMFActivate** mf_activates = nullptr;
-		MFEnumDeviceSources(m_pAttributes, &mf_activates, &m_iCameraCount);
+		if (m_pMFActivates)
+		{
+			for (UINT32 i = 0; i < m_iCameraCount; i++)
+			{
+				m_pMFActivates[i]->Release();
+			}
+			CoTaskMemFree(m_pMFActivates);
+		}
+		MFEnumDeviceSources(m_pAttributes, &m_pMFActivates, &m_iCameraCount);
 		return m_iCameraCount;
 	}
 
-	void get_camera_list(std::vector<std::string>& id_list, std::vector<std::string>& name_list)
+	std::string get_camera_id(int index)
 	{
 		if (m_pMFActivates == nullptr)
 		{
-			return;
+			return std::string();
 		}
-		for (UINT32 i = 0; i < m_iCameraCount; i++)
+		WCHAR* guid = 0;
+		UINT32 guid_len = 255;
+		m_pMFActivates[index]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, &guid, &guid_len);
+		std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> convert;
+		return convert.to_bytes(guid);
+	}
+
+	std::string get_camera_name(int index)
+	{
+		if (m_pMFActivates == nullptr)
 		{
-			WCHAR* guid = 0;
-			UINT32 guid_len = 255;
-			m_pMFActivates[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, &guid, &guid_len);
-			std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> convert;
-			id_list.push_back(convert.to_bytes(guid));
-			WCHAR* name = 0;
-			UINT32 name_len = 255;
-			m_pMFActivates[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &name, &name_len);
-			name_list.push_back(convert.to_bytes(name));
+			return std::string();
 		}
+		WCHAR* name = 0;
+		UINT32 name_len = 255;
+		m_pMFActivates[index]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &name, &name_len);
+		std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> convert;
+		return convert.to_bytes(name);
 	}
 
 	bool start(const std::string& camera_id, int& width, int& height, CAMERA_COLOR_FORMAT& format)
@@ -531,9 +544,14 @@ int MFCameraCapture::get_camera_count()
 	return impl_->get_camera_count();
 }
 
-void MFCameraCapture::get_camera_list(std::vector<std::string>& id_list, std::vector<std::string>& name_list)
+std::string MFCameraCapture::get_camera_id(int index)
 {
-	return impl_->get_camera_list(id_list, name_list);
+	return impl_->get_camera_id(index);
+}
+
+std::string MFCameraCapture::get_camera_name(int index)
+{
+	return impl_->get_camera_name(index);
 }
 
 bool MFCameraCapture::start(const std::string& camera_id, int& width, int& height, CAMERA_COLOR_FORMAT& format)

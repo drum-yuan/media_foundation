@@ -54,7 +54,8 @@ public:
 	~MFCameraCapture();
 
     int get_camera_count();
-    void get_camera_list(std::vector<std::string>& id_list, std::vector<std::string>& name_list);
+    std::string get_camera_id(int index);
+    std::string get_camera_name(int index);
 	bool start(const std::string& camera_id, int& width, int& height, CAMERA_COLOR_FORMAT& format);
 	void stop(const std::string& camera_id);
     void get_resolution_list(const std::string& camera_id, std::vector<std::pair<int, int>>& resolution_list);
