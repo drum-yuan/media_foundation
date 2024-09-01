@@ -5,6 +5,7 @@
 #include <strmif.h>
 #include <codecvt>
 #include <map>
+#include <mutex>
 
 class MFCameraCapture::Impl
 {
@@ -51,6 +52,7 @@ public:
 
 	int get_camera_count()
 	{
+		std::lock_guard<std::mutex> lock(m_mtEnumCamera);
 		if (m_pMFActivates)
 		{
 			for (UINT32 i = 0; i < m_iCameraCount; i++)
@@ -65,7 +67,12 @@ public:
 
 	std::string get_camera_id(int index)
 	{
+		std::lock_guard<std::mutex> lock(m_mtEnumCamera);
 		if (m_pMFActivates == nullptr)
+		{
+			return std::string();
+		}
+		if (index < 0 || index >= (int)m_iCameraCount)
 		{
 			return std::string();
 		}
@@ -78,7 +85,12 @@ public:
 
 	std::string get_camera_name(int index)
 	{
+		std::lock_guard<std::mutex> lock(m_mtEnumCamera);
 		if (m_pMFActivates == nullptr)
+		{
+			return std::string();
+		}
+		if (index < 0 || index >= (int)m_iCameraCount)
 		{
 			return std::string();
 		}
@@ -91,6 +103,7 @@ public:
 
 	bool start(const std::string& camera_id, int& width, int& height, CAMERA_COLOR_FORMAT& format)
 	{
+		std::lock_guard<std::mutex> lock(m_mtEnumCamera);
 		if (m_pMFActivates == nullptr)
 		{
 			return false;
@@ -182,6 +195,7 @@ public:
 
 	void stop(const std::string& camera_id)
 	{
+		std::lock_guard<std::mutex> lock(m_mtEnumCamera);
 		int i = find_camera_index(camera_id);
 		if (i == -1)
 		{
@@ -210,6 +224,7 @@ public:
 
 	void get_resolution_list(const std::string& camera_id, std::vector<std::pair<int, int>>& resolution_list)
 	{
+		std::lock_guard<std::mutex> lock(m_mtEnumCamera);
 		int i = find_camera_index(camera_id);
 		if (i == -1)
 		{
@@ -242,6 +257,7 @@ public:
 
 	void set_property(const std::string& camera_id, CAMERA_PROPETIES prop, float value, bool use_auto)
 	{
+		std::lock_guard<std::mutex> lock(m_mtEnumCamera);
 		int i = find_camera_index(camera_id);
 		if (i == -1)
 		{
@@ -294,6 +310,7 @@ public:
 
 	float get_property(const std::string& camera_id, CAMERA_PROPETIES prop)
 	{
+		std::lock_guard<std::mutex> lock(m_mtEnumCamera);
 		int i = find_camera_index(camera_id);
 		if (i == -1)
 		{
@@ -526,7 +543,7 @@ private:
 	std::map<int, IMFSourceReader*> m_mapSourceReader;
 	std::map<int, IMFMediaSource*> m_mapMediaSource;
 	std::map<int, IMFMediaType*> m_mapMediaType;
-
+	std::mutex m_mtEnumCamera;
 };
 
 MFCameraCapture::MFCameraCapture()
