@@ -29,6 +29,8 @@ class MFMonitorCapture::Impl
 public:
 	Impl()
 	{
+		winrt::init_apartment(winrt::apartment_type::single_threaded);
+
 		UINT flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 		D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, flags, nullptr, 0, D3D11_SDK_VERSION, &m_pD3DDevice, nullptr, &m_pD3DContext);
 		IDXGIDevice* dxgi_device = reinterpret_cast<IDXGIDevice*>(m_pD3DDevice);
@@ -49,6 +51,8 @@ public:
 	~Impl()
 	{
 		m_DirectDevice.Close();
+
+		winrt::uninit_apartment();
 	}
 
 	int get_monitor_count()
