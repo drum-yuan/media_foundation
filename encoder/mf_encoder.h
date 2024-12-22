@@ -21,6 +21,16 @@ enum VIDEO_FORMAT
 	VIDEO_FORMAT_MAX
 };
 
+enum AUDIO_FORMAT
+{
+	AUDIO_FORMAT_U8 = 0,
+	AUDIO_FORMAT_S16LE,
+	AUDIO_FORMAT_S24LE,
+	AUDIO_FORMAT_S32LE,
+	AUDIO_FORMAT_FLT,
+	AUDIO_FORMAT_DBL
+};
+
 struct InputVMemoryData
 {
     int width;
@@ -40,13 +50,28 @@ struct InputVTextureData
 
 struct OutputVData
 {
-    int width;
-    int height;
     uint8_t* data;
     unsigned long size;
     int64_t duration;
     int64_t timestamp;
     bool key_frame;
+};
+
+struct InputAMemoryData
+{
+	int sample_rate;
+	int channels;
+	int format;
+	uint8_t* data;
+	unsigned long size;
+};
+
+struct OutputAData
+{
+	uint8_t* data;
+	unsigned long size;
+    int64_t duration;
+	int64_t timestamp;
 };
 
 class __declspec(dllexport) MFVideoEncoder final
@@ -63,6 +88,23 @@ public:
 
     int encode(const InputVTextureData& input_data, OutputVData& output_data);
     int encode(const InputVMemoryData& input_data, OutputVData& output_data);
+
+private:
+    class Impl;
+    Impl* impl_;
+};
+
+class __declspec(dllexport) MFAudioEncoder final
+{
+public:
+	MFAudioEncoder();
+	~MFAudioEncoder();
+
+	bool start(int sample_rate, int channels, AUDIO_FORMAT format);
+	void stop();
+	void set_time_base(int64_t time_base); // if not set, default is 90000. otherwise output timestamp is invalid
+
+	int encode(const InputAMemoryData& input_data, OutputAData& output_data);
 
 private:
     class Impl;

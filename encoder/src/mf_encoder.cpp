@@ -15,6 +15,8 @@
 #define MPEG_TIME_BASE 90000
 #define XALIGN(x, a) (((x) + (a)-1) & ~((a)-1))
 
+const CLSID CLSID_CMSAACEncMFT = { 0x93AF0C51, 0x2275, 0x45D2, { 0xA5, 0x0A, 0xFC, 0x8D, 0xD4, 0x2B, 0x5B, 0xE0 } };
+
 struct CropRect
 {
 	float left;
@@ -69,10 +71,10 @@ public:
             }
             if (!ret)
             {
-                if (m_pMFTEncoder)
+                if (m_pMFTVideoEncoder)
                 {
-                    m_pMFTEncoder->Release();
-                    m_pMFTEncoder = nullptr;
+                    m_pMFTVideoEncoder->Release();
+                    m_pMFTVideoEncoder = nullptr;
                 }
                 if (m_pMFTConvert)
                 {
@@ -86,7 +88,7 @@ public:
         UINT32 frame_height = XALIGN((UINT32)(height * (m_tCropRatio.bottom - m_tCropRatio.top)), 2);
         m_iEncodedWidth = XALIGN((UINT32)(frame_width * m_fScaleRatio), 16);
         m_iEncodedHeight = XALIGN((UINT32)(frame_height * m_fScaleRatio), 2);
-        HRESULT hr = CoCreateInstance(CLSID_MSH264EncoderMFT, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_pMFTEncoder));
+        HRESULT hr = CoCreateInstance(CLSID_MSH264EncoderMFT, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_pMFTVideoEncoder));
         if (FAILED(hr))
         {
             ret = false;
@@ -103,7 +105,7 @@ public:
         pOutputType->SetUINT32(MF_MT_AVG_BITRATE, m_iEncodedWidth * m_iEncodedHeight * 100);
         pOutputType->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
         pOutputType->SetUINT32(MF_MT_ALL_SAMPLES_INDEPENDENT, FALSE);
-        hr = m_pMFTEncoder->SetOutputType(0, pOutputType, 0);
+        hr = m_pMFTVideoEncoder->SetOutputType(0, pOutputType, 0);
         if (FAILED(hr))
         {
             ret = false;
@@ -115,11 +117,11 @@ public:
         MFSetAttributeSize(pInputType, MF_MT_FRAME_SIZE, m_iEncodedWidth, m_iEncodedHeight);
         MFSetAttributeRatio(pInputType, MF_MT_FRAME_RATE, fps_num, fps_den);
         MFSetAttributeRatio(pInputType, MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
-        hr = m_pMFTEncoder->SetInputType(0, pInputType, 0);
+        hr = m_pMFTVideoEncoder->SetInputType(0, pInputType, 0);
         if (FAILED(hr))
         {
             pInputType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_IYUV);
-            hr = m_pMFTEncoder->SetInputType(0, pInputType, 0);
+            hr = m_pMFTVideoEncoder->SetInputType(0, pInputType, 0);
             if (FAILED(hr))
             {
                 ret = false;
@@ -156,10 +158,10 @@ public:
 
 	void stop()
 	{
-        if (m_pMFTEncoder)
+        if (m_pMFTVideoEncoder)
         {
-            m_pMFTEncoder->Release();
-            m_pMFTEncoder = nullptr;
+            m_pMFTVideoEncoder->Release();
+            m_pMFTVideoEncoder = nullptr;
         }
         if (m_pMFTConvert)
         {
@@ -492,7 +494,7 @@ private:
     bool get_encoder_config(UINT32& width, UINT32& height, VIDEO_FORMAT& format, float& fps)
     {
         IMFMediaType* input_type = nullptr;
-        m_pMFTEncoder->GetInputCurrentType(0, &input_type);
+        m_pMFTVideoEncoder->GetInputCurrentType(0, &input_type);
         if (input_type == nullptr)
         {
             return false;
@@ -524,7 +526,7 @@ private:
         {
             if (yuv_sample)
             {
-                hr1 = m_pMFTEncoder->ProcessInput(0, yuv_sample, 0);
+                hr1 = m_pMFTVideoEncoder->ProcessInput(0, yuv_sample, 0);
                 if (FAILED(hr1) && hr1 != 0xC00D36B5)
                 {
                     output_buffer->Release();
@@ -533,8 +535,8 @@ private:
             }
             else
             {
-                m_pMFTEncoder->ProcessMessage(MFT_MESSAGE_NOTIFY_END_OF_STREAM, 0);
-                m_pMFTEncoder->ProcessMessage(MFT_MESSAGE_COMMAND_DRAIN, 0);
+                m_pMFTVideoEncoder->ProcessMessage(MFT_MESSAGE_NOTIFY_END_OF_STREAM, 0);
+                m_pMFTVideoEncoder->ProcessMessage(MFT_MESSAGE_COMMAND_DRAIN, 0);
             }
             MFT_OUTPUT_DATA_BUFFER mft_output_data = {};
             mft_output_data.dwStreamID = 0;
@@ -543,7 +545,7 @@ private:
             DWORD dwStatus = 0;
             MFCreateSample(&mft_output_data.pSample);
             mft_output_data.pSample->AddBuffer(output_buffer);
-            hr2 = m_pMFTEncoder->ProcessOutput(0, 1, &mft_output_data, &dwStatus);
+            hr2 = m_pMFTVideoEncoder->ProcessOutput(0, 1, &mft_output_data, &dwStatus);
             if (FAILED(hr2) && hr2 != 0xC00D6D72)
             {
                 mft_output_data.pSample->Release();
@@ -650,7 +652,7 @@ private:
 
     ID3D11Device* m_pD3DDevice{ nullptr };
     ID3D11DeviceContext* m_pD3DDeviceCtx{ nullptr };
-    IMFTransform* m_pMFTEncoder{ nullptr };
+    IMFTransform* m_pMFTVideoEncoder{ nullptr };
     IMFTransform* m_pMFTConvert{ nullptr };
     DX11ShaderNV12* m_pDX11ShaderNV12{ nullptr };
     bool m_bOwnD3DDevice{ false };
@@ -708,6 +710,146 @@ int MFVideoEncoder::encode(const InputVTextureData& input_data, OutputVData& out
 }
 
 int MFVideoEncoder::encode(const InputVMemoryData& input_data, OutputVData& output_data)
+{
+	return impl_->encode(input_data, output_data);
+}
+
+
+class MFAudioEncoder::Impl
+{
+public:
+    Impl()
+    {
+
+    }
+
+	~Impl()
+	{
+
+	}
+
+	bool start(int sample_rate, int channels, AUDIO_FORMAT format)
+	{
+		HRESULT hr = CoCreateInstance(CLSID_CMSAACEncMFT, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_pMFTAudioEncoder));
+		if (FAILED(hr))
+		{
+			return false;
+		}
+		IMFMediaType* pInputType = nullptr;
+		IMFMediaType* pOutputType = nullptr;
+		defer[&]{
+			if (pInputType)
+			{
+				pInputType->Release();
+			}
+		if (pOutputType)
+		{
+				pOutputType->Release();
+			}
+		};
+		int bits = get_bits_per_sample(format);
+		MFCreateMediaType(&pInputType);
+		pInputType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+		pInputType->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
+		pInputType->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, channels);
+		pInputType->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sample_rate);
+		pInputType->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, bits);
+		pInputType->SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, bits / 8 * channels);
+		pInputType->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, bits / 8 * channels * sample_rate);
+		pInputType->SetUINT32(MF_MT_ALL_SAMPLES_INDEPENDENT, TRUE);
+		hr = m_pMFTAudioEncoder->SetInputType(0, pInputType, 0);
+		if (FAILED(hr))
+		{
+			return false;
+		}
+		MFCreateMediaType(&pOutputType);
+		pOutputType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+		pOutputType->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_AAC);
+		pOutputType->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, channels);
+		pOutputType->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sample_rate);
+		pOutputType->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, bits);
+		pInputType->SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, bits / 8 * channels);
+		pOutputType->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, bits / 8 * channels * sample_rate);
+		pOutputType->SetUINT32(MF_MT_AAC_PAYLOAD_TYPE, 0);
+		hr = m_pMFTAudioEncoder->SetOutputType(0, pOutputType, 0);
+		if (FAILED(hr))
+		{
+			return false;
+		}
+		return true;
+	}
+
+	void stop()
+	{
+		if (m_pMFTAudioEncoder)
+		{
+			m_pMFTAudioEncoder->Release();
+			m_pMFTAudioEncoder = nullptr;
+		}
+	}
+
+	void set_time_base(int64_t time_base)
+	{
+		m_iTimeBase = time_base;
+	}
+
+	int encode(const InputAMemoryData& input_data, OutputAData& output_data)
+	{
+		// TODO
+		return ENCODE_SUCCESS;
+	}
+
+private:
+	int get_bits_per_sample(AUDIO_FORMAT format)
+	{
+		switch (format)
+		{
+		case AUDIO_FORMAT_U8:
+			return 8;
+		case AUDIO_FORMAT_S16LE:
+			return 16;
+		case AUDIO_FORMAT_S24LE:
+			return 24;
+		case AUDIO_FORMAT_S32LE:
+		case AUDIO_FORMAT_FLT:
+			return 32;
+		case AUDIO_FORMAT_DBL:
+			return 64;
+		default:
+			return 0;
+		}
+	}
+
+	IMFTransform* m_pMFTAudioEncoder{ nullptr };
+	int64_t m_iTimeBase{ MPEG_TIME_BASE };
+};
+
+MFAudioEncoder::MFAudioEncoder()
+{
+	impl_ = new Impl();
+}
+
+MFAudioEncoder::~MFAudioEncoder()
+{
+	delete impl_;
+}
+
+bool MFAudioEncoder::start(int sample_rate, int channels, AUDIO_FORMAT format)
+{
+	return impl_->start(sample_rate, channels, format);
+}
+
+void MFAudioEncoder::stop()
+{
+	impl_->stop();
+}
+
+void MFAudioEncoder::set_time_base(int64_t time_base)
+{
+	impl_->set_time_base(time_base);
+}
+
+int MFAudioEncoder::encode(const InputAMemoryData& input_data, OutputAData& output_data)
 {
 	return impl_->encode(input_data, output_data);
 }
